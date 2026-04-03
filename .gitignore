@@ -1,0 +1,9 @@
+# Ignorar entorno de Python
+backend/venv/
+backend/__pycache__/
+
+# Ignorar dependencias de Node/Frontend
+frontend/node_modules/
+
+# Ignorar variables de entorno
+.env
