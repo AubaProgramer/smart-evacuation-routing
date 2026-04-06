@@ -1,68 +1,12 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a0f1e" />
-  <link rel="manifest" href="manifest.json" />
-  <title>EscapeRoute AI</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-  <!-- Tu CSS -->
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
-
-  <!-- HEADER -->
-  <header class="app-header">
-    <div class="logo">🛰️ EscapeRoute<span>AI</span></div>
-    <div class="status-bar">
-      <span id="status-dot" class="dot dot--idle"></span>
-      <span id="status-text">Esperando conexión...</span>
-    </div>
-  </header>
-
-  <!-- MAPA — ocupa toda la pantalla -->
-  <div id="map"></div>
-
-  <!-- PANEL DE INFO (abajo) -->
-  <div class="info-panel">
-    <div class="info-card" id="card-obstacles">
-      <p class="label">Obstáculos detectados</p>
-      <p class="value" id="obstacle-count">0</p>
-    </div>
-    <div class="info-card" id="card-distance">
-      <p class="label">Distancia estimada</p>
-      <p class="value" id="route-distance">-- nodos</p>
-    </div>
-    <div class="info-card" id="card-algorithm">
-      <p class="label">Algoritmo activo</p>
-      <p class="value" id="algo-name">BFS</p>
-    </div>
-  </div>
-
-  <!-- MODAL "Sin ruta posible" -->
-  <div id="modal-no-route" class="modal hidden">
-    <div class="modal-box">
-      <span class="modal-icon">⚠️</span>
-      <h2>¡Sin Ruta Posible!</h2>
-      <p>Todos los caminos están bloqueados. Retira algún obstáculo para continuar.</p>
-      <button onclick="closeModal()">Entendido</button>
-    </div>
-  </div>
-
-  <!-- TOAST de notificaciones -->
-  <div id="toast" class="toast hidden"></div>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Tus scripts (en orden) -->
-  <script src="js/map.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/app.js"></script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EscapeRouteAI</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
