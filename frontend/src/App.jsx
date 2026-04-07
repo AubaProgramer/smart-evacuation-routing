@@ -14,9 +14,10 @@ function App() {
         await fetch("http://127.0.0.1:8000/inicializar_mapa", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: 20.62, lon: -103.23 }), // Coordenadas de Guadalajara
+          // AQUI ESTÁ EL CAMBIO 1: Le agregamos radio: 10000 (10 km)
+          body: JSON.stringify({ lat: 20.62, lon: -103.23, radio: 10000 }), 
         });
-        console.log("Servidor: Mapa inicializado correctamente");
+        console.log("Servidor: Mapa inicializado correctamente (10km)");
       } catch (error) {
         console.error("Error al inicializar mapa:", error);
       }
@@ -27,7 +28,6 @@ function App() {
   // 2. Pedir la ruta cuando origen y destino cambien
   useEffect(() => {
     if (origen && destino) {
-      // Importante: Tu backend usa lat/lon. Nos aseguramos de enviar exactamente eso.
       const payload = {
         origen: { lat: origen.lat, lon: origen.lon },
         destino: { lat: destino.lat, lon: destino.lon }
@@ -43,7 +43,15 @@ function App() {
         return res.json();
       })
       .then(data => {
-        setRuta(data.puntos);
+        // AQUI ESTÁ EL CAMBIO 2: El truco visual
+        // Forzamos a que la ruta inicie exactamente en la chincheta A y termine en la B
+        const rutaCompleta = [
+          { lat: origen.lat, lon: origen.lon }, // Chincheta origen
+          ...data.puntos,                       // Las calles reales
+          { lat: destino.lat, lon: destino.lon } // Chincheta destino
+        ];
+        
+        setRuta(rutaCompleta);
       })
       .catch(err => {
         console.error("Error al obtener ruta:", err);

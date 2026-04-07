@@ -17,10 +17,18 @@ class MotorEvacuacion:
 
     def inicializar_grafo(self, lat: float, lon: float, radio: float = 5000):
         """
-        Descarga y procesa la red vial de OpenStreetMap en un radio de 5km (5000m).
+        Descarga y procesa la red vial. Elimina islas desconectadas.
         """
         try:
-            self.G = ox.graph_from_point((lat, lon), dist=radio, network_type='drive')
+            # 1. Descargar el grafo en bruto
+            grafo_crudo = ox.graph_from_point((lat, lon), dist=radio, network_type='drive')
+            
+            # 2. MEJORA: Eliminar calles desconectadas para evitar cortes de ruta
+            componentes = list(nx.strongly_connected_components(grafo_crudo))
+            nodo_mas_grande = max(componentes, key=len)
+            self.G = grafo_crudo.subgraph(nodo_mas_grande).copy()
+            
+            # 3. Calcular velocidades y tiempos
             self.G = ox.add_edge_speeds(self.G)
             self.G = ox.add_edge_travel_times(self.G)
             self.bloqueos_count = 0
@@ -31,8 +39,7 @@ class MotorEvacuacion:
 
     def bloquear_calle(self, lat: float, lon: float):
         """
-        Localiza la calle (arista) más cercana a las coordenadas GPS y la elimina
-        del grafo activo para que no sea considerada en futuros cálculos de ruta.
+        Localiza la calle (arista) más cercana a las coordenadas GPS y la elimina.
         """
         if self.G is None:
             return False
@@ -49,20 +56,44 @@ class MotorEvacuacion:
 
     def calcular_ruta_segura(self, o_lat, o_lon, d_lat, d_lon):
         """
-        Calcula la ruta más rápida/corta usando el algoritmo de Dijkstra.
-        Retorna una lista de coordenadas GPS para el Frontend.
+        Calcula la ruta más rápida y extrae la geometría real de las calles.
         """
         if self.G is None:
             raise ValueError("El mapa no ha sido inicializado")
+        
         nodo_origen = ox.nearest_nodes(self.G, o_lon, o_lat)
         nodo_destino = ox.nearest_nodes(self.G, d_lon, d_lat)
+        
         try:
             ruta_nodos = nx.shortest_path(self.G, nodo_origen, nodo_destino, weight='length')
             ruta_coords = []
-            for nodo in ruta_nodos:
-                datos_nodo = self.G.nodes[nodo]
-                ruta_coords.append({"lat": datos_nodo['y'], "lon": datos_nodo['x']})
+            
+            # MEJORA: Extraer las curvas (geometría) en vez de solo nodos rectos
+            for i in range(len(ruta_nodos) - 1):
+                u = ruta_nodos[i]
+                v = ruta_nodos[i + 1]
+                
+                # Obtener los datos de la calle entre dos intersecciones
+                edge_data = self.G.get_edge_data(u, v)
+                
+                if edge_data:
+                    # Tomamos el primer camino válido
+                    data = list(edge_data.values())[0]
+                    
+                    if 'geometry' in data:
+                        # Si tiene curvas, sacamos todos los micropuntos
+                        for coords_lon, coords_lat in data['geometry'].coords:
+                            ruta_coords.append({"lat": coords_lat, "lon": coords_lon})
+                    else:
+                        # Si es una línea recta perfecta, usamos el nodo
+                        ruta_coords.append({"lat": self.G.nodes[u]['y'], "lon": self.G.nodes[u]['x']})
+            
+            # Asegurar que el punto final exacto se agregue
+            ultimo_nodo = ruta_nodos[-1]
+            ruta_coords.append({"lat": self.G.nodes[ultimo_nodo]['y'], "lon": self.G.nodes[ultimo_nodo]['x']})
+            
             return ruta_coords
+            
         except nx.NetworkXNoPath:
             return None
 
