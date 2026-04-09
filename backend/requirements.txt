@@ -4,3 +4,5 @@ osmnx
 networkx
 shapely
 pydantic
+pandas
+geopandas

@@ -1,4 +1,6 @@
-﻿import osmnx as ox
+﻿import json
+from extractor_pois import extraer_pois_seguros
+import osmnx as ox
 import networkx as nx
 import os
 
@@ -104,3 +106,53 @@ class MotorEvacuacion:
             "nodos_activos": len(self.G.nodes),
             "bloqueos_registrados": self.bloqueos_count
         }
+    def obtener_puntos_seguros(self, latitud, longitud, radio=5000):
+        """
+        Obtiene los POIs y los transforma en un JSON limpio para el Frontend.
+        """
+        # 1. Usar tu módulo de la Fase 1
+        df_pois = extraer_pois_seguros(latitud, longitud, radio)
+        
+        if df_pois.empty:
+            return json.dumps([]) # Retorna un JSON vacío si no hay nada
+            
+        lista_segura = []
+        
+        # 2. Recorrer los resultados y limpiar la data
+        for index, row in df_pois.iterrows():
+            centroide = row['geometry'].centroid
+            
+            nombre_punto = row['name']
+            if nombre_punto == 'No especificado':
+                nombre_punto = f"Punto Seguro ({row['amenity']})"
+                
+            punto = {
+                "nombre": nombre_punto,
+                "tipo": row['amenity'],
+                "lat": centroide.y,
+                "lng": centroide.x
+            }
+            lista_segura.append(punto)
+            
+        # 3. Convertir a formato JSON
+        return json.dumps(lista_segura, ensure_ascii=False, indent=2)
+# ==========================================
+# ZONA DE PRUEBAS LOCALES
+# ==========================================
+if __name__ == "__main__":
+    print("Iniciando prueba del MotorEvacuacion...")
+    
+    # 1. Creamos una "instancia" (objeto) de la clase de Yahir
+    motor = MotorEvacuacion()
+    
+    # 2. Definimos las coordenadas de prueba
+    lat_prueba = 20.6274
+    lon_prueba = -103.2425
+    
+    # 3. Llamamos a TU función usando el objeto "motor"
+    print("Buscando puntos y generando JSON...")
+    resultado_json = motor.obtener_puntos_seguros(lat_prueba, lon_prueba)
+    
+    # 4. Mostramos el resultado final
+    print("\n--- RESULTADO JSON ---")
+    print(resultado_json)    
