@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react' // IMPORTANTE: Se agregó useEffect
 import MapView from './mapView' 
 import './App.css'
 
@@ -19,6 +19,24 @@ function App() {
 
   const handleSetOrigen = useCallback((val) => setOrigen(val), []);
   const handleSetDestino = useCallback((val) => setDestino(val), []);
+
+  // 1. AÑADIDO: Inicializar el mapa al cargar la aplicación
+  useEffect(() => {
+    const inicializar = async () => {
+      try {
+        await fetch("http://127.0.0.1:8000/inicializar_mapa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Usamos un radio amplio para evitar errores de bordes
+          body: JSON.stringify({ lat: 20.62, lon: -103.23, radio: 10000 }), 
+        });
+        console.log("Servidor: Mapa inicializado correctamente");
+      } catch (error) {
+        console.error("Error al inicializar mapa:", error);
+      }
+    };
+    inicializar();
+  }, []);
 
   const reiniciarTodo = () => {
     setOrigen(null);
@@ -45,8 +63,14 @@ function App() {
         return;
       }
 
-      // Convertimos [{lat, lon}] a [[lat, lon]] para Leaflet
-      setRuta(data.puntos.map(p => [p.lat, p.lon]));
+      // 2. AÑADIDO: Truco visual para asegurar que la ruta se conecta a las chinchetas
+      const rutaCompleta = [
+        [origen.lat, origen.lon], // Punto exacto de la chincheta A
+        ...data.puntos.map(p => [p.lat, p.lon]), // La ruta de las calles
+        [destino.lat, destino.lon] // Punto exacto de la chincheta B
+      ];
+
+      setRuta(rutaCompleta);
     } catch (err) {
       console.error("Error conectando al servidor:", err);
     } finally {
@@ -108,7 +132,7 @@ function App() {
           setOrigen={handleSetOrigen} 
           setDestino={handleSetDestino} 
           ruta={ruta}
-          setRuta={setRuta} // Importante para poder limpiar la ruta
+          setRuta={setRuta} 
         />
       </div>
     </div>
