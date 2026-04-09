@@ -4,6 +4,7 @@ from typing import List
 from motor_mapas import MotorEvacuacion
 from fastapi.middleware.cors import CORSMiddleware
 
+
 app = FastAPI(title="Smart Evacuation Routing API")
 
 # Configuración de permisos para que el Frontend se conecte

@@ -1,40 +1,125 @@
-/* Estilos para el contenedor flotante de la interfaz */
-.ui-panel {
+:root {
+  --nav-bg: rgba(255, 255, 255, 0.98);
+  --accent: #1a73e8;
+  --text: #3c4043;
+}
+
+body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; font-family: sans-serif; }
+
+/* CONTENEDOR DE CONTROLES (La clave de la responsividad) */
+.controls-wrapper {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 15px;
+  left: 15px;
+  right: 15px;
   z-index: 1000;
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-  width: 280px;
-  text-align: left;
+  display: flex;
+  flex-wrap: wrap; /* Hace que los elementos bajen si no caben */
+  gap: 12px;
+  pointer-events: none; /* Permite tocar el mapa en los huecos vacíos */
 }
 
-.ui-panel h1 {
-  font-size: 22px;
-  margin: 0 0 10px 0;
-  color: #08060d;
+/* PANEL DE BÚSQUEDA */
+.search-panel-left {
+  pointer-events: auto;
+  flex: 1;
+  min-width: 320px; /* Tamaño mínimo para que no se rompa el input */
+  max-width: 450px;
 }
 
-.ui-panel p {
-  font-size: 14px;
-  color: #6b6375;
-  margin-bottom: 15px;
+.search-bar-core {
+  background: var(--nav-bg);
+  height: 48px; /* Un poco más alto para mejor tacto */
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
 }
 
-.btn-reset {
-  width: 100%;
-  padding: 10px;
-  background: #aa3bff;
-  color: white;
+.input-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.input-box input {
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
+  background: transparent;
+  width: 100%;
+  font-size: 14px;
+  outline: none;
+  color: var(--text);
 }
 
-.btn-reset:hover {
-  background: #8e2ed9;
+.v-sep {
+  width: 1px;
+  height: 24px;
+  background: #ddd;
+  margin: 0 12px;
 }
+
+/* PANEL DE CATEGORÍAS */
+.categories-panel-right {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap; /* Los botones se acomodan solos */
+  gap: 8px;
+  align-items: center;
+}
+
+.cat-chip {
+  background: var(--nav-bg);
+  border: 1px solid #ddd;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.cat-chip:hover {
+  background: #f1f3f4;
+  border-color: #ccc;
+}
+
+/* BOTÓN DE ACCIÓN */
+.go-btn {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  color: #9aa0a6;
+  cursor: pointer;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+}
+.go-btn.active { color: var(--accent); }
+
+/* MAPA */
+.map-wrapper {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  background-color: #e5e3df;
+}
+
+/* ZOOM ABAJO A LA DERECHA (Para que no estorbe en móvil) */
+.leaflet-bottom.leaflet-right { 
+  margin-bottom: 20px;
+  margin-right: 10px;
+}
+
