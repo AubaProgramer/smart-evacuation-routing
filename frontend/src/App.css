@@ -1,4 +1,4 @@
-/* RESET BÁSICO */
+/* 1. RESET Y CONFIGURACIÓN BASE */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -11,94 +11,93 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  background-color: #f0f2f5;
 }
 
-/* CONTENEDOR DEL MAPA */
+/* 2. EL MAPA (OCUPA TODA LA PANTALLA ABAJO) */
 .map-wrapper {
   flex: 1;
   width: 100%;
   height: 100%;
-  z-index: 1; /* El mapa siempre va al fondo */
+  z-index: 1;
 }
 
-/* CONTENEDOR DE CONTROLES (FLOTANTE) */
+/* 3. CONTENEDOR DE CONTROLES FLOTANTES */
 .controls-wrapper {
   position: absolute;
-  top: 20px;
+  top: 15px;
   width: 100%;
   display: flex;
   justify-content: space-between;
-  padding: 0 25px;
-  z-index: 1000; /* Por encima del mapa */
-  pointer-events: none; /* Crucial: permite clickear el mapa a través del espacio vacío */
+  padding: 0 20px;
+  z-index: 1000;
+  pointer-events: none; /* Permite clickear el mapa en espacios vacíos */
 }
 
-/* PANELES BLANCOS (IZQUIERDA Y DERECHA) */
-.search-panel-left, 
-.categories-panel-right {
-  pointer-events: auto; /* Reactiva los clics en los botones e inputs */
+/* 4. PANEL DE BÚSQUEDA (IZQUIERDA) */
+.search-panel-left {
+  pointer-events: auto;
   background: white;
-  padding: 12px;
+  padding: 8px 12px;
   border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  
+  /* ESTA LÍNEA ALEJA EL PANEL DE LOS BOTONES DE ZOOM (+ y -) */
+  margin-left: 45px; 
 }
 
 .search-bar-core {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-/* CAJAS DE ENTRADA */
+/* 5. CAJAS DE ENTRADA (ORIGEN Y DESTINO) */
 .input-box {
   background: #f1f3f4;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  transition: background 0.2s;
-}
-
-.input-box:focus-within {
-  background: #e8eaed;
+  min-width: 140px;
 }
 
 .input-box input {
   border: none;
   background: transparent;
   outline: none;
-  width: 120px;
-  margin-left: 8px;
-  font-size: 14px;
+  width: 100px;
+  margin-left: 6px;
+  font-size: 13px;
   color: #3c4043;
 }
 
-/* SEPARADOR */
+/* SEPARADOR ENTRE INPUTS */
 .v-sep {
   width: 1px;
-  height: 24px;
+  height: 20px;
   background: #dadce0;
+  margin: 0 4px;
 }
 
-/* BOTÓN GO (AZUL) */
+/* 6. BOTÓN AZUL (FLECHA GO) */
 .go-btn {
   background: #1a73e8;
   color: white;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+  font-size: 18px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(26, 115, 232, 0.4);
 }
 
 .go-btn:hover {
@@ -106,23 +105,26 @@
   transform: scale(1.05);
 }
 
-.go-btn:active {
-  transform: scale(0.95);
+/* 7. PANEL DE CATEGORÍAS (DERECHA) */
+.categories-panel-right {
+  pointer-events: auto;
+  display: flex;
+  gap: 8px;
 }
 
-/* BOTONES DE CATEGORÍAS (CHIPS) */
 .cat-chip {
-  border: 1px solid #dadce0;
   background: white;
-  padding: 8px 16px;
-  border-radius: 24px;
+  border: 1px solid #dadce0;
+  padding: 8px 14px;
+  border-radius: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
   color: #3c4043;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   transition: all 0.2s;
 }
 
@@ -131,7 +133,7 @@
   border-color: #bdc1c6;
 }
 
-/* ESTADO ACTIVO PARA EL BOTÓN DE BLOQUEO */
+/* ESTADO CUANDO EL REPORTE ESTÁ ACTIVO */
 .active-report {
   background: #d93025 !important;
   color: white !important;
@@ -140,12 +142,13 @@
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); }
-  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
-/* MEJORA VISUAL PARA LOS CÍRCULOS DE LEAFLET */
-.leaflet-interactive {
-  cursor: crosshair;
+/* 8. AJUSTES DE LEAFLET (OPCIONAL) */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
 }
