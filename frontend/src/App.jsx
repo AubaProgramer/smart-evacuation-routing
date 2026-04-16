@@ -15,7 +15,7 @@ function App() {
   const [modoReporte, setModoReporte] = useState(false);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/inicializar_mapa", {
+    fetch("http://127.0.0.1:8001/inicializar_mapa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lat: 20.6719, lon: -103.3488, radio: 5000 }), 
@@ -26,7 +26,7 @@ function App() {
     if (!tempO || !tempD) return;
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/ruta", {
+      const res = await fetch("http://127.0.0.1:8001/ruta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -49,7 +49,7 @@ function App() {
     setModoReporte(false); 
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/reportar_bloqueo", {
+      const res = await fetch("http://127.0.0.1:8001/reportar_bloqueo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: punto.lat, lon: punto.lon }),
