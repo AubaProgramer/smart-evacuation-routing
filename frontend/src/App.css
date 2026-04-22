@@ -13,9 +13,10 @@
   flex-direction: column;
   font-family: 'Segoe UI', Roboto, sans-serif;
   background-color: #f0f2f5;
+  overflow: hidden;
 }
 
-/* 2. EL MAPA (OCUPA TODA LA PANTALLA ABAJO) */
+/* 2. EL MAPA */
 .map-wrapper {
   flex: 1;
   width: 100%;
@@ -32,20 +33,18 @@
   justify-content: space-between;
   padding: 0 20px;
   z-index: 1000;
-  pointer-events: none; /* Permite clickear el mapa en espacios vacíos */
+  pointer-events: none; /* No bloquea el mapa */
 }
 
 /* 4. PANEL DE BÚSQUEDA (IZQUIERDA) */
 .search-panel-left {
-  pointer-events: auto;
+  pointer-events: auto; /* Permite clics */
   background: white;
   padding: 8px 12px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-  
-  /* ESTA LÍNEA ALEJA EL PANEL DE LOS BOTONES DE ZOOM (+ y -) */
   margin-left: 45px; 
 }
 
@@ -55,7 +54,7 @@
   gap: 8px;
 }
 
-/* 5. CAJAS DE ENTRADA (ORIGEN Y DESTINO) */
+/* 5. CAJAS DE ENTRADA */
 .input-box {
   background: #f1f3f4;
   padding: 6px 10px;
@@ -75,7 +74,6 @@
   color: #3c4043;
 }
 
-/* SEPARADOR ENTRE INPUTS */
 .v-sep {
   width: 1px;
   height: 20px;
@@ -83,7 +81,7 @@
   margin: 0 4px;
 }
 
-/* 6. BOTÓN AZUL (FLECHA GO) */
+/* 6. BOTÓN IR */
 .go-btn {
   background: #1a73e8;
   color: white;
@@ -105,7 +103,7 @@
   transform: scale(1.05);
 }
 
-/* 7. PANEL DE CATEGORÍAS (DERECHA) */
+/* 7. BOTONES DE CATEGORÍAS */
 .categories-panel-right {
   pointer-events: auto;
   display: flex;
@@ -133,7 +131,6 @@
   border-color: #bdc1c6;
 }
 
-/* ESTADO CUANDO EL REPORTE ESTÁ ACTIVO */
 .active-report {
   background: #d93025 !important;
   color: white !important;
@@ -141,14 +138,66 @@
   animation: pulse 1.5s infinite;
 }
 
+/* 8. LEYENDA DE RUTAS - ESTO ES LO QUE HACE QUE CAMBIEN */
+.ruta-legend {
+  position: absolute;
+  bottom: 30px;
+  left: 20px;
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+  z-index: 1100; /* Por encima de todo */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: auto; /* CRÍTICO */
+  min-width: 160px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5f6368;
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+}
+
+.legend-item:hover {
+  background: #f8f9fa;
+}
+
+.legend-item.active {
+  background: #f1f3f4;
+  color: #1a73e8;
+}
+
+/* Colores de los puntos indicadores */
+.dot {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.dot-blue { background-color: #1a73e8; }
+.dot-green { background-color: #2e7d32; }
+.dot-gray { background-color: #555555; }
+
+/* Animación para el reporte */
 @keyframes pulse {
   0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
 
-/* 8. AJUSTES DE LEAFLET (OPCIONAL) */
-.leaflet-control-zoom {
-  border: none !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+/* 9. LEAFLET FIX */
+.leaflet-container {
+  cursor: crosshair !important;
 }

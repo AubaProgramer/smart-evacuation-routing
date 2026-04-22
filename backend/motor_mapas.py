@@ -1,158 +1,86 @@
 ﻿import json
-from extractor_pois import extraer_pois_seguros
 import osmnx as ox
 import networkx as nx
 import os
 
 class MotorEvacuacion:
     def __init__(self):
-        self.G = None  # Grafo en memoria
+        self.G = None  
         self.bloqueos_count = 0
-        
-        # Configuración de caché local relativa para que funcione en cualquier PC
         cache_path = os.path.join(os.path.dirname(__file__), 'cache')
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
-            
+        if not os.path.exists(cache_path): os.makedirs(cache_path)
         ox.settings.use_cache = True
         ox.settings.cache_folder = cache_path
 
-    def inicializar_grafo(self, lat: float, lon: float, radio: float = 5000):
-        """
-        Descarga y procesa la red vial. Elimina islas desconectadas.
-        """
+    def inicializar_grafo(self, lat, lon, radio=5000):
         try:
-            # 1. Descargar el grafo en bruto
             grafo_crudo = ox.graph_from_point((lat, lon), dist=radio, network_type='drive')
-            
-            # 2. MEJORA: Eliminar calles desconectadas para evitar cortes de ruta
             componentes = list(nx.strongly_connected_components(grafo_crudo))
-            nodo_mas_grande = max(componentes, key=len)
-            self.G = grafo_crudo.subgraph(nodo_mas_grande).copy()
-            
-            # 3. Calcular velocidades y tiempos
+            self.G = grafo_crudo.subgraph(max(componentes, key=len)).copy()
             self.G = ox.add_edge_speeds(self.G)
             self.G = ox.add_edge_travel_times(self.G)
-            self.bloqueos_count = 0
             return True
-        except Exception as e:
-            print(f"Error al descargar el mapa de OSM: {e}")
-            return False
+        except: return False
 
-    def bloquear_calle(self, lat: float, lon: float):
-        """
-        Localiza la calle (arista) más cercana a las coordenadas GPS y la elimina.
-        """
-        if self.G is None:
-            return False
+    def bloquear_calle(self, lat, lon):
+        if self.G is None: return False
         try:
             u, v, key = ox.nearest_edges(self.G, lon, lat)
-            if self.G.has_edge(u, v):
-                self.G.remove_edge(u, v, key)
-                self.bloqueos_count += 1
-                return True
-            return False
-        except Exception as e:
-            print(f"Error al bloquear calle: {e}")
-            return False
+            if self.G.has_edge(u, v): self.G.remove_edge(u, v)
+            if self.G.has_edge(v, u): self.G.remove_edge(v, u)
+            return True
+        except: return False
 
-    def calcular_ruta_segura(self, o_lat, o_lon, d_lat, d_lon):
-        """
-        Calcula la ruta más rápida y extrae la geometría real de las calles.
-        """
-        if self.G is None:
-            raise ValueError("El mapa no ha sido inicializado")
-        
-        nodo_origen = ox.nearest_nodes(self.G, o_lon, o_lat)
-        nodo_destino = ox.nearest_nodes(self.G, d_lon, d_lat)
-        
+    def _formatear_ruta(self, ruta_nodos):
+        ruta_coords = []
+        for i in range(len(ruta_nodos) - 1):
+            u, v = ruta_nodos[i], ruta_nodos[i+1]
+            edge_data = list(self.G.get_edge_data(u, v).values())[0]
+            if 'geometry' in edge_data:
+                for lon, lat in edge_data['geometry'].coords:
+                    ruta_coords.append({"lat": lat, "lon": lon})
+            else:
+                ruta_coords.append({"lat": self.G.nodes[u]['y'], "lon": self.G.nodes[u]['x']})
+        ruta_coords.append({"lat": self.G.nodes[ruta_nodos[-1]]['y'], "lon": self.G.nodes[ruta_nodos[-1]]['x']})
+        return ruta_coords
+
+    def calcular_ruta_avanzada(self, o_lat, o_lon, d_lat, d_lon, tipo="mas_rapida"):
+        if self.G is None: return None
         try:
-            ruta_nodos = nx.shortest_path(self.G, nodo_origen, nodo_destino, weight='length')
-            ruta_coords = []
+            n_origen = ox.nearest_nodes(self.G, o_lon, o_lat)
+            n_destino = ox.nearest_nodes(self.G, d_lon, d_lat)
             
-            # MEJORA: Extraer las curvas (geometría) en vez de solo nodos rectos
-            for i in range(len(ruta_nodos) - 1):
-                u = ruta_nodos[i]
-                v = ruta_nodos[i + 1]
+            # --- LÓGICA DE PESOS AGRESIVA ---
+            if tipo == "mas_rapida":
+                # Usa el tiempo real de viaje (avenidas)
+                peso = 'travel_time'
+            
+            elif tipo == "maximo_flujo":
+                # Favorece calles anchas (avenidas grandes)
+                for u, v, k, data in self.G.edges(data=True, keys=True):
+                    lanes = data.get('lanes', 1)
+                    if isinstance(lanes, list): lanes = lanes[0]
+                    l = int(lanes) if str(lanes).isdigit() else 1
+                    # Si tiene 3 o más carriles, es "baratísimo" pasar por ahí
+                    data['flujo_w'] = data['length'] * (0.01 if l >= 3 else 10.0)
+                peso = 'flujo_w'
                 
-                # Obtener los datos de la calle entre dos intersecciones
-                edge_data = self.G.get_edge_data(u, v)
-                
-                if edge_data:
-                    # Tomamos el primer camino válido
-                    data = list(edge_data.values())[0]
+            elif tipo == "segura":
+                # PROHIBIDO usar avenidas. Obliga a usar calles residenciales.
+                for u, v, k, data in self.G.edges(data=True, keys=True):
+                    hw = data.get('highway', 'unclassified')
+                    if isinstance(hw, list): hw = hw[0]
                     
-                    if 'geometry' in data:
-                        # Si tiene curvas, sacamos todos los micropuntos
-                        for coords_lon, coords_lat in data['geometry'].coords:
-                            ruta_coords.append({"lat": coords_lat, "lon": coords_lon})
+                    # Si la calle es una avenida principal o secundaria, le ponemos un costo ENORME
+                    if hw in ['motorway', 'primary', 'secondary', 'trunk']:
+                        factor = 1000.0 
                     else:
-                        # Si es una línea recta perfecta, usamos el nodo
-                        ruta_coords.append({"lat": self.G.nodes[u]['y'], "lon": self.G.nodes[u]['x']})
-            
-            # Asegurar que el punto final exacto se agregue
-            ultimo_nodo = ruta_nodos[-1]
-            ruta_coords.append({"lat": self.G.nodes[ultimo_nodo]['y'], "lon": self.G.nodes[ultimo_nodo]['x']})
-            
-            return ruta_coords
-            
-        except nx.NetworkXNoPath:
-            return None
+                        factor = 0.1 # Las calles chiquitas son "gratis"
+                    data['seguridad_w'] = data['length'] * factor
+                peso = 'seguridad_w'
 
-    def obtener_estadisticas(self):
-        if self.G is None:
-            return {"nodos_activos": 0, "bloqueos_registrados": 0}
-        return {
-            "nodos_activos": len(self.G.nodes),
-            "bloqueos_registrados": self.bloqueos_count
-        }
-    def obtener_puntos_seguros(self, latitud, longitud, radio=5000):
-        """
-        Obtiene los POIs y los transforma en un JSON limpio para el Frontend.
-        """
-        # 1. Usar tu módulo de la Fase 1
-        df_pois = extraer_pois_seguros(latitud, longitud, radio)
-        
-        if df_pois.empty:
-            return json.dumps([]) # Retorna un JSON vacío si no hay nada
-            
-        lista_segura = []
-        
-        # 2. Recorrer los resultados y limpiar la data
-        for index, row in df_pois.iterrows():
-            centroide = row['geometry'].centroid
-            
-            nombre_punto = row['name']
-            if nombre_punto == 'No especificado':
-                nombre_punto = f"Punto Seguro ({row['amenity']})"
-                
-            punto = {
-                "nombre": nombre_punto,
-                "tipo": row['amenity'],
-                "lat": centroide.y,
-                "lng": centroide.x
-            }
-            lista_segura.append(punto)
-            
-        # 3. Convertir a formato JSON
-        return json.dumps(lista_segura, ensure_ascii=False, indent=2)
-# ==========================================
-# ZONA DE PRUEBAS LOCALES
-# ==========================================
-if __name__ == "__main__":
-    print("Iniciando prueba del MotorEvacuacion...")
-    
-    # 1. Creamos una "instancia" (objeto) de la clase de Yahir
-    motor = MotorEvacuacion()
-    
-    # 2. Definimos las coordenadas de prueba
-    lat_prueba = 20.6274
-    lon_prueba = -103.2425
-    
-    # 3. Llamamos a TU función usando el objeto "motor"
-    print("Buscando puntos y generando JSON...")
-    resultado_json = motor.obtener_puntos_seguros(lat_prueba, lon_prueba)
-    
-    # 4. Mostramos el resultado final
-    print("\n--- RESULTADO JSON ---")
-    print(resultado_json)    
+            ruta_nodos = nx.shortest_path(self.G, n_origen, n_destino, weight=peso)
+            return self._formatear_ruta(ruta_nodos)
+        except:
+            # Si el peso es tan alto que no encuentra ruta, intenta con la más corta por defecto
+            return None
