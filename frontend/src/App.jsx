@@ -6,7 +6,6 @@ function App() {
   const [origen, setOrigen] = useState(null);
   const [destino, setDestino] = useState(null);
   const [rutas, setRutas] = useState(null); 
-  // Cambiamos el valor inicial para que coincida con una llave válida
   const [seleccion, setSeleccion] = useState('mas_rapida'); 
   const [bloqueos, setBloqueos] = useState([]); 
   const [modoReporte, setModoReporte] = useState(false);
@@ -28,11 +27,8 @@ function App() {
         body: JSON.stringify({ origen, destino }),
       });
       const data = await res.json();
-      console.log("Rutas actualizadas en estado:", data.rutas);
       setRutas(data.rutas);
-    } catch (e) {
-      console.error("Error conectando con el servidor", e);
-    }
+    } catch (e) { console.error("Error en servidor:", e); }
   };
 
   const reportarBloqueo = async (p) => {
@@ -47,54 +43,76 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <div className="controls-wrapper">
-        <div className="search-panel-left">
-          <div className="search-bar-core">
-            <input placeholder="Origen" readOnly value={origen ? "📍 Origen" : ""} />
-            <input placeholder="Destino" readOnly value={destino ? "🚩 Destino" : ""} />
-            <button className="go-btn" onClick={calcularRuta}>→</button>
-          </div>
+    <div className="dashboard">
+      {/* BARRA SUPERIOR CON EL NOMBRE NUEVO */}
+      <header className="top-bar">
+        <div className="logo">SMART-<span>EVACUATION-ROUTING</span></div>
+        <div className="top-actions">
+          <button className="calc-btn" onClick={calcularRuta}>Calcular Trayectorias</button>
+          <button className="reset-btn" onClick={() => window.location.reload()}>Refrescar Sistema</button>
         </div>
-        <div className="categories-panel-right">
-          <button className={`cat-chip ${modoReporte ? 'active-report' : ''}`} onClick={() => setModoReporte(!modoReporte)}>Bloquear</button>
-          <button className="cat-chip" onClick={() => { setOrigen(null); setDestino(null); setRutas(null); setBloqueos([]); }}>Reset</button>
-        </div>
-      </div>
+      </header>
 
-      {rutas && (
-        <div className="ruta-legend">
-          <div className={`legend-item ${seleccion === 'mas_rapida' ? 'active' : ''}`} 
-               onClick={() => setSeleccion('mas_rapida')}>
-            <span className="dot dot-blue"></span> Rápida
-          </div>
-          
-          <div className={`legend-item ${seleccion === 'segura_prioritaria' ? 'active' : ''}`} 
-               onClick={() => setSeleccion('segura_prioritaria')}>
-            <span className="dot dot-green"></span> Segura
-          </div>
+      <div className="main-content">
+        {/* PANEL LATERAL DE HERRAMIENTAS */}
+        <aside className="sidebar">
+          <section className="sidebar-section">
+            <p className="section-label">PUNTOS DE CONTROL</p>
+            <div className="widget-grid">
+              <div className={`widget-card ${origen ? 'complete' : ''}`}>
+                <span className="icon">📍</span>
+                <label>Punto Origen</label>
+              </div>
+              <div className={`widget-card ${destino ? 'complete' : ''}`}>
+                <span className="icon">🚩</span>
+                <label>Punto Destino</label>
+              </div>
+            </div>
+          </section>
 
-          <div className={`legend-item ${seleccion === 'mas_corta' ? 'active' : ''}`} 
-               onClick={() => setSeleccion('mas_corta')}>
-            <span className="dot dot-gray"></span> Flujo / Corta
-          </div>
-        </div>
-      )}
+          <section className="sidebar-section">
+            <p className="section-label">ACCIONES TÁCTICAS</p>
+            <button 
+              className={`action-button ${modoReporte ? 'danger-mode' : ''}`} 
+              onClick={() => setModoReporte(!modoReporte)}
+            >
+              🚫 Reportar Bloqueo
+            </button>
+          </section>
 
-      <div className="map-wrapper">
-        <MapView 
-          origen={origen} 
-          destino={destino} 
-          setOrigen={setOrigen} 
-          setDestino={setDestino} 
-          // Pasamos la ruta usando la nueva selección
-          ruta={rutas ? rutas[seleccion] : null} 
-          colorRuta={seleccion === 'mas_rapida' ? '#1a73e8' : seleccion === 'segura_prioritaria' ? '#2e7d32' : '#555555'}
-          bloqueos={bloqueos} 
-          modoReporte={modoReporte} 
-          onReportar={reportarBloqueo}
-          seleccionActual={seleccion}
-        />
+          {rutas && (
+            <section className="sidebar-section">
+              <p className="section-label">MODOS DE EVACUACIÓN</p>
+              <div className="route-list">
+                <button className={`route-item ${seleccion === 'mas_rapida' ? 'active-blue' : ''}`} onClick={() => setSeleccion('mas_rapida')}>
+                  <span className="indicator blue"></span> Ruta Más Rápida
+                </button>
+                <button className={`route-item ${seleccion === 'segura_prioritaria' ? 'active-green' : ''}`} onClick={() => setSeleccion('segura_prioritaria')}>
+                  <span className="indicator green"></span> Ruta Segura (Zonas Bajas)
+                </button>
+                <button className={`route-item ${seleccion === 'mas_corta' ? 'active-gray' : ''}`} onClick={() => setSeleccion('mas_corta')}>
+                  <span className="indicator gray"></span> Máximo Flujo Vehicular
+                </button>
+              </div>
+            </section>
+          )}
+        </aside>
+
+        {/* CONTENEDOR DEL MAPA */}
+        <main className="map-view-container">
+          <MapView 
+            origen={origen} 
+            destino={destino} 
+            setOrigen={setOrigen} 
+            setDestino={setDestino} 
+            ruta={rutas ? rutas[seleccion] : null} 
+            colorRuta={seleccion === 'mas_rapida' ? '#1a73e8' : seleccion === 'segura_prioritaria' ? '#2e7d32' : '#555555'}
+            bloqueos={bloqueos} 
+            modoReporte={modoReporte} 
+            onReportar={reportarBloqueo}
+            seleccionActual={seleccion}
+          />
+        </main>
       </div>
     </div>
   )
