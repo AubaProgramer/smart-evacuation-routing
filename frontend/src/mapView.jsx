@@ -2,7 +2,8 @@ import React from 'react';
 import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloqueos, modoReporte, onReportar }) => {
+// Agregamos onEliminarBloqueo a las props que recibe
+const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloqueos, modoReporte, onReportar, onEliminarBloqueo }) => {
 
   const handleMapClick = (e) => {
     const coords = { lat: e.lngLat.lat, lon: e.lngLat.lng };
@@ -20,53 +21,34 @@ const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloq
     }
   };
 
-  const routeGeoJSON = ruta ? {
+  let coordenadasRuta = [];
+
+  if (ruta && ruta.length > 0) {
+    coordenadasRuta = ruta.map(punto => {
+      if (punto.lon !== undefined) return [punto.lon, punto.lat];
+      if (punto.lng !== undefined) return [punto.lng, punto.lat];
+      if (Array.isArray(punto)) return [punto[1], punto[0]]; 
+      return null;
+    }).filter(p => p !== null);
+  }
+
+  const routeGeoJSON = coordenadasRuta.length > 1 ? {
     type: 'Feature',
     properties: {},
     geometry: {
       type: 'LineString',
-      coordinates: ruta.map(punto => [punto.lon, punto.lat]) 
+      coordinates: coordenadasRuta
     }
   } : null;
 
-  // MAPEO EXACTO SEGÚN TU ARCHIVO .MBTILES
   const mapLayers = [
-    {
-      id: 'zmg-agua', type: 'fill', source: 'zmg-offline', 'source-layer': 'water',
-      paint: { 'fill-color': '#a3ccff', 'fill-opacity': 1 }
-    },
-    {
-      id: 'zmg-parques', type: 'fill', source: 'zmg-offline', 'source-layer': 'park',
-      paint: { 'fill-color': '#c8e6c9', 'fill-opacity': 0.6 }
-    },
-    {
-      id: 'zmg-edificios', type: 'fill', source: 'zmg-offline', 'source-layer': 'building',
-      paint: { 'fill-color': '#d4d4d4', 'fill-opacity': 0.5 }
-    },
-    {
-      id: 'zmg-calles', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#ffffff', 'line-width': 1.5 }
-    },
-    {
-      id: 'zmg-avenidas', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation',
-      filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false],
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#fde047', 'line-width': 3.5 }
-    },
-    {
-      id: 'zmg-nombres', type: 'symbol', source: 'zmg-offline', 'source-layer': 'transportation_name',
-      layout: { 'text-field': ['get', 'name:latin'], 'symbol-placement': 'line', 'text-size': 11 },
-      paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
-    },
-    {
-      id: 'zmg-pois', type: 'circle', source: 'zmg-offline', 'source-layer': 'poi',
-      paint: { 
-        'circle-radius': 5, 
-        'circle-color': ['match', ['get', 'class'], 'hospital', '#ef4444', 'school', '#eab308', '#64748b'],
-        'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' 
-      }
-    }
+    { id: 'zmg-agua', type: 'fill', source: 'zmg-offline', 'source-layer': 'water', paint: { 'fill-color': '#a3ccff', 'fill-opacity': 1 } },
+    { id: 'zmg-parques', type: 'fill', source: 'zmg-offline', 'source-layer': 'park', paint: { 'fill-color': '#c8e6c9', 'fill-opacity': 0.6 } },
+    { id: 'zmg-edificios', type: 'fill', source: 'zmg-offline', 'source-layer': 'building', paint: { 'fill-color': '#d4d4d4', 'fill-opacity': 0.5 } },
+    { id: 'zmg-calles', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 1.5 } },
+    { id: 'zmg-avenidas', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation', filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fde047', 'line-width': 3.5 } },
+    { id: 'zmg-nombres', type: 'symbol', source: 'zmg-offline', 'source-layer': 'transportation_name', layout: { 'text-field': ['get', 'name:latin'], 'symbol-placement': 'line', 'text-size': 11 }, paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 } },
+    { id: 'zmg-pois', type: 'circle', source: 'zmg-offline', 'source-layer': 'poi', paint: { 'circle-radius': 5, 'circle-color': ['match', ['get', 'class'], 'hospital', '#ef4444', 'school', '#eab308', '#64748b'], 'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' } }
   ];
 
   const routeStyle = { id: 'ruta-activa', type: 'line', source: 'ruta-source', paint: { 'line-color': colorRuta || '#ef4444', 'line-width': 6, 'line-opacity': 0.9 }, layout: { 'line-join': 'round', 'line-cap': 'round' } };
@@ -79,18 +61,38 @@ const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloq
         maxZoom={20} 
         mapStyle={{ version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e5e7eb' } }] }}
         onClick={handleMapClick}
+        cursor={modoReporte ? 'crosshair' : 'pointer'}
       >
-        <Source 
-          id="zmg-offline" type="vector" tiles={['http://localhost:8001/tiles/{z}/{x}/{y}.pbf']} 
-          minzoom={0} maxzoom={14} scheme="xyz" 
-        >
+        <Source id="zmg-offline" type="vector" tiles={['http://localhost:8001/tiles/{z}/{x}/{y}.pbf']} minzoom={0} maxzoom={14} scheme="xyz" >
           {mapLayers.map((layer) => <Layer key={layer.id} {...layer} />)}
         </Source>
 
         {routeGeoJSON && <Source id="ruta-source" type="geojson" data={routeGeoJSON}><Layer {...routeStyle} /></Source>}
+        
         {origen && <Marker longitude={origen.lon} latitude={origen.lat} anchor="bottom"><div style={{ color: '#3b82f6', fontSize: '24px' }}>📍</div></Marker>}
         {destino && <Marker longitude={destino.lon} latitude={destino.lat} anchor="bottom"><div style={{ color: '#ef4444', fontSize: '24px' }}>🏁</div></Marker>}
-        {bloqueos.map((bloqueo, index) => <Marker key={`bloqueo-${index}`} longitude={bloqueo.lon} latitude={bloqueo.lat} anchor="center"><div style={{ color: '#eab308', fontSize: '20px' }}>⚠️</div></Marker>)}
+        
+{/* Renderizado inteligente de bloqueos con evento de clic para borrar */}
+        {bloqueos.map((bloqueo) => (
+          <Marker 
+            key={bloqueo.id} 
+            longitude={bloqueo.lon} 
+            latitude={bloqueo.lat} 
+            anchor="center"
+            // EL SECRETO ESTÁ AQUÍ: Interceptamos el evento original del mapa
+            onClick={(e) => {
+              e.originalEvent.stopPropagation(); // Evita que el clic llegue al mapa gris
+              onEliminarBloqueo(bloqueo.id);
+            }}
+          >
+            <div 
+              style={{ cursor: 'pointer', fontSize: '28px' }} // Lo hice más grande para que sea fácil de clickear
+              title="Clic para eliminar bloqueo"
+            >
+              ⚠️
+            </div>
+          </Marker>
+        ))}
       </Map>
     </div>
   );

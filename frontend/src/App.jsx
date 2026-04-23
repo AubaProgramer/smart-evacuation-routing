@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import MapView from './MapView' // <- Cambio a PascalCase por convención de React
+import MapView from './MapView'
 import './App.css'
 
 function App() {
@@ -9,18 +9,16 @@ function App() {
   const [seleccion, setSeleccion] = useState('mas_rapida'); 
   const [bloqueos, setBloqueos] = useState([]); 
   const [modoReporte, setModoReporte] = useState(false);
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:8001/inicializar_mapa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // Coordenadas iniciales cerca del centro de la ZMG
-      body: JSON.stringify({ lat: 20.6596, lon: -103.3496 }), 
-    });
-  }, []);
+  
+  // NUEVO: Estado para controlar el indicador visual de carga
+  const [cargando, setCargando] = useState(false);
 
   const calcularRuta = async () => {
     if (!origen || !destino) return;
+    
+    // 1. Encendemos el indicador visual
+    setCargando(true); 
+    
     try {
       const res = await fetch("http://127.0.0.1:8001/ruta", {
         method: "POST",
@@ -29,26 +27,94 @@ function App() {
       });
       const data = await res.json();
       setRutas(data.rutas);
-    } catch (e) { console.error("Error en servidor:", e); }
+    } catch (e) { 
+      console.error("Error en servidor:", e); 
+    } finally {
+      // 2. Apagamos el indicador pase lo que pase (éxito o error)
+      setCargando(false); 
+    }
   };
 
   const reportarBloqueo = async (p) => {
-    setBloqueos(prev => [...prev, p]);
-    setModoReporte(false);
-    await fetch("http://127.0.0.1:8001/reportar_bloqueo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
-    });
-    if (origen && destino) calcularRuta();
+    const nuevoBloqueo = {
+      ...p,
+      id: Date.now(),
+      timestamp: Date.now()
+    };
+
+    setBloqueos(prev => [...prev, nuevoBloqueo]);
+
+    try {
+      await fetch("http://127.0.0.1:8001/reportar_bloqueo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevoBloqueo),
+      });
+      if (origen && destino) calcularRuta();
+    } catch (error) {
+      console.error("Error al reportar el bloqueo:", error);
+    }
   };
+
+  const eliminarBloqueo = async (id) => {
+    setBloqueos(prev => prev.filter(b => b.id !== id));
+    try {
+      await fetch(`http://127.0.0.1:8001/eliminar_bloqueo/${id}`, { method: 'DELETE' });
+      if (origen && destino) calcularRuta(); 
+    } catch (error) {
+      console.error("Error al eliminar el bloqueo:", error);
+    }
+  };
+
+  useEffect(() => {
+    const TIEMPO_VIDA_MS = 300000; // 5 minutos
+
+    const intervalo = setInterval(() => {
+      const ahora = Date.now();
+      
+      setBloqueos(prev => {
+        const vigentes = [];
+        const caducados = [];
+        
+        prev.forEach(b => {
+          if (ahora - b.timestamp < TIEMPO_VIDA_MS) vigentes.push(b);
+          else caducados.push(b);
+        });
+
+        if (caducados.length > 0) {
+          console.log(`Eliminando ${caducados.length} bloqueos caducados...`);
+          caducados.forEach(b => {
+            fetch(`http://127.0.0.1:8001/eliminar_bloqueo/${b.id}`, { method: 'DELETE' })
+              .catch(console.error);
+          });
+          if (origen && destino) calcularRuta();
+        }
+        
+        return vigentes; 
+      });
+    }, 5000); 
+
+    return () => clearInterval(intervalo);
+  }, [origen, destino]); 
 
   return (
     <div className="dashboard">
       <header className="top-bar">
         <div className="logo">SMART-<span>EVACUATION-ROUTING</span></div>
         <div className="top-actions">
-          <button className="calc-btn" onClick={calcularRuta}>Calcular Trayectorias</button>
+          {/* NUEVO: Botón inteligente que cambia de estado y previene clics dobles */}
+          <button 
+            className="calc-btn" 
+            onClick={calcularRuta}
+            disabled={cargando}
+            style={{ 
+              opacity: cargando ? 0.7 : 1, 
+              cursor: cargando ? 'wait' : 'pointer' 
+            }}
+          >
+            {cargando ? '⏳ Calculando...' : 'Calcular Trayectorias'}
+          </button>
+          
           <button className="reset-btn" onClick={() => window.location.reload()}>Refrescar Sistema</button>
         </div>
       </header>
@@ -75,7 +141,7 @@ function App() {
               className={`action-button ${modoReporte ? 'danger-mode' : ''}`} 
               onClick={() => setModoReporte(!modoReporte)}
             >
-              🚫 Reportar Bloqueo
+              {modoReporte ? '❌ Terminar Reporte' : '🚫 Reportar Bloqueo'}
             </button>
           </section>
 
@@ -108,6 +174,7 @@ function App() {
             bloqueos={bloqueos} 
             modoReporte={modoReporte} 
             onReportar={reportarBloqueo}
+            onEliminarBloqueo={eliminarBloqueo}
             seleccionActual={seleccion}
           />
         </main>
@@ -115,4 +182,5 @@ function App() {
     </div>
   )
 }
+
 export default App;
