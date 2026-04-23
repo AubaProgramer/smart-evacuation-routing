@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import MapView from './mapView' 
+import MapView from './MapView' // <- Cambio a PascalCase por convención de React
 import './App.css'
 
 function App() {
@@ -14,7 +14,8 @@ function App() {
     fetch("http://127.0.0.1:8001/inicializar_mapa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat: 20.6274, lon: -103.2425 }), 
+      // Coordenadas iniciales cerca del centro de la ZMG
+      body: JSON.stringify({ lat: 20.6596, lon: -103.3496 }), 
     });
   }, []);
 
@@ -44,7 +45,6 @@ function App() {
 
   return (
     <div className="dashboard">
-      {/* BARRA SUPERIOR CON EL NOMBRE NUEVO */}
       <header className="top-bar">
         <div className="logo">SMART-<span>EVACUATION-ROUTING</span></div>
         <div className="top-actions">
@@ -54,7 +54,6 @@ function App() {
       </header>
 
       <div className="main-content">
-        {/* PANEL LATERAL DE HERRAMIENTAS */}
         <aside className="sidebar">
           <section className="sidebar-section">
             <p className="section-label">PUNTOS DE CONTROL</p>
@@ -98,7 +97,6 @@ function App() {
           )}
         </aside>
 
-        {/* CONTENEDOR DEL MAPA */}
         <main className="map-view-container">
           <MapView 
             origen={origen} 

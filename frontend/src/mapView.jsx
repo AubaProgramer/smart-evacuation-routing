@@ -1,59 +1,99 @@
-import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Circle, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import React from 'react';
+import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-// Fix para los iconos de marcador que a veces desaparecen en React
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-let DefaultIcon = L.icon({ iconUrl: markerIcon, shadowUrl: markerShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
-L.Marker.prototype.options.icon = DefaultIcon;
+const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloqueos, modoReporte, onReportar }) => {
 
-function ClickHandler({ origen, destino, setOrigen, setDestino, modoReporte, onReportar }) {
-  useMapEvents({
-    click(e) {
-      const p = { lat: e.latlng.lat, lon: e.latlng.lng };
-      if (modoReporte) onReportar(p);
-      else if (!origen || (origen && destino)) { setOrigen(p); setDestino(null); }
-      else setDestino(p);
+  const handleMapClick = (e) => {
+    const coords = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+    if (modoReporte) {
+      onReportar(coords);
+      return;
+    }
+    if (!origen) {
+      setOrigen(coords);
+    } else if (!destino) {
+      setDestino(coords);
+    } else {
+      setOrigen(coords);
+      setDestino(null);
+    }
+  };
+
+  const routeGeoJSON = ruta ? {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: ruta.map(punto => [punto.lon, punto.lat]) 
+    }
+  } : null;
+
+  // MAPEO EXACTO SEGÚN TU ARCHIVO .MBTILES
+  const mapLayers = [
+    {
+      id: 'zmg-agua', type: 'fill', source: 'zmg-offline', 'source-layer': 'water',
+      paint: { 'fill-color': '#a3ccff', 'fill-opacity': 1 }
     },
-  });
-  return null;
-}
+    {
+      id: 'zmg-parques', type: 'fill', source: 'zmg-offline', 'source-layer': 'park',
+      paint: { 'fill-color': '#c8e6c9', 'fill-opacity': 0.6 }
+    },
+    {
+      id: 'zmg-edificios', type: 'fill', source: 'zmg-offline', 'source-layer': 'building',
+      paint: { 'fill-color': '#d4d4d4', 'fill-opacity': 0.5 }
+    },
+    {
+      id: 'zmg-calles', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 1.5 }
+    },
+    {
+      id: 'zmg-avenidas', type: 'line', source: 'zmg-offline', 'source-layer': 'transportation',
+      filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false],
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#fde047', 'line-width': 3.5 }
+    },
+    {
+      id: 'zmg-nombres', type: 'symbol', source: 'zmg-offline', 'source-layer': 'transportation_name',
+      layout: { 'text-field': ['get', 'name:latin'], 'symbol-placement': 'line', 'text-size': 11 },
+      paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
+    },
+    {
+      id: 'zmg-pois', type: 'circle', source: 'zmg-offline', 'source-layer': 'poi',
+      paint: { 
+        'circle-radius': 5, 
+        'circle-color': ['match', ['get', 'class'], 'hospital', '#ef4444', 'school', '#eab308', '#64748b'],
+        'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' 
+      }
+    }
+  ];
 
-export default function MapView(props) {
-  // Procesamos los puntos solo cuando la prop 'ruta' cambie
-  const puntosRuta = useMemo(() => {
-    if (!props.ruta || !Array.isArray(props.ruta)) return [];
-    return props.ruta.map(p => [p.lat, p.lon]);
-  }, [props.ruta]);
+  const routeStyle = { id: 'ruta-activa', type: 'line', source: 'ruta-source', paint: { 'line-color': colorRuta || '#ef4444', 'line-width': 6, 'line-opacity': 0.9 }, layout: { 'line-join': 'round', 'line-cap': 'round' } };
 
   return (
-    <MapContainer center={[20.6274, -103.2425]} zoom={14} style={{ height: '100%', width: '100%' }}>
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <ClickHandler {...props} />
-      
-      {props.bloqueos.map((b, i) => (
-        <Circle key={`b-${i}`} center={[b.lat, b.lon]} radius={50} pathOptions={{ color: '#ff4444', fillColor: '#ff4444', fillOpacity: 0.5 }} />
-      ))}
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <Map
+        initialViewState={{ longitude: -103.3496, latitude: 20.6596, zoom: 12 }}
+        style={{ width: '100%', height: '100%' }}
+        maxZoom={20} 
+        mapStyle={{ version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e5e7eb' } }] }}
+        onClick={handleMapClick}
+      >
+        <Source 
+          id="zmg-offline" type="vector" tiles={['http://localhost:8001/tiles/{z}/{x}/{y}.pbf']} 
+          minzoom={0} maxzoom={14} scheme="xyz" 
+        >
+          {mapLayers.map((layer) => <Layer key={layer.id} {...layer} />)}
+        </Source>
 
-      {props.origen && <Marker position={[props.origen.lat, props.origen.lon]} />}
-      {props.destino && <Marker position={[props.destino.lat, props.destino.lon]} />}
-
-      {/* DIBUJO DE LA RUTA */}
-      {puntosRuta.length > 0 && (
-        <Polyline 
-          // La KEY debe ser única para cada tipo de ruta para que Leaflet la actualice
-          key={`polyline-${props.seleccionActual}-${puntosRuta.length}`}
-          positions={puntosRuta} 
-          pathOptions={{ 
-            color: props.colorRuta, 
-            weight: 7, 
-            opacity: 0.8,
-            lineJoin: 'round'
-          }} 
-        />
-      )}
-    </MapContainer>
+        {routeGeoJSON && <Source id="ruta-source" type="geojson" data={routeGeoJSON}><Layer {...routeStyle} /></Source>}
+        {origen && <Marker longitude={origen.lon} latitude={origen.lat} anchor="bottom"><div style={{ color: '#3b82f6', fontSize: '24px' }}>📍</div></Marker>}
+        {destino && <Marker longitude={destino.lon} latitude={destino.lat} anchor="bottom"><div style={{ color: '#ef4444', fontSize: '24px' }}>🏁</div></Marker>}
+        {bloqueos.map((bloqueo, index) => <Marker key={`bloqueo-${index}`} longitude={bloqueo.lon} latitude={bloqueo.lat} anchor="center"><div style={{ color: '#eab308', fontSize: '20px' }}>⚠️</div></Marker>)}
+      </Map>
+    </div>
   );
-}
+};
+
+export default MapView;
