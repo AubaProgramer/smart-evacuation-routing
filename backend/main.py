@@ -10,6 +10,7 @@ import uvicorn
 
 app = FastAPI()
 
+# --- CONFIGURACIÓN DE CORS ---
 app.add_middleware(
     CORSMiddleware, 
     allow_origins=["*"], 
@@ -24,20 +25,22 @@ MBTILES_PATH = "zmg_map.mbtiles"
 class PuntoGPS(BaseModel):
     lat: float
     lon: float
-    id: Optional[int] = None        
-    timestamp: Optional[int] = None 
-    tipo: Optional[str] = "bloqueo" # <-- NUEVO: Le avisamos a Python que recibirá un "tipo"
+    id: Optional[int] = None        # Nuevo: Recibe el ID único de React
+    timestamp: Optional[int] = None # Nuevo: Recibe la fecha de creación
 
 class RutaRequest(BaseModel):
     origen: PuntoGPS
     destino: PuntoGPS
 
+# --- PRECARGA DEL SISTEMA AL ARRANCAR EL SERVIDOR ---
 @app.on_event("startup")
 async def startup_event():
     print("🚀 Levantando servidor y preparando Inteligencia Artificial...")
+    # Le pasamos las coordenadas de la ZMG directamente al arrancar
     motor.inicializar_grafo(20.6596, -103.3496)
     print("✅ Sistema listo para recibir peticiones al instante.")
 
+# --- ENDPOINTS DEL MAPA (VECTOR TILES) ---
 @app.get("/tiles/{z}/{x}/{y}.pbf")
 def get_tile(z: int, x: int, y: int):
     if not os.path.exists(MBTILES_PATH):
@@ -69,8 +72,10 @@ def get_tile(z: int, x: int, y: int):
         }
     )
 
+# --- ENDPOINTS DE LA IA DE EVACUACIÓN ---
 @app.post("/inicializar_mapa")
 async def init(p: PuntoGPS):
+    # Mantenemos este endpoint por seguridad, aunque React ya no lo necesite
     if motor.inicializar_grafo(p.lat, p.lon): 
         return {"status": "ok"}
     raise HTTPException(status_code=500)
@@ -87,14 +92,17 @@ async def get_ruta(r: RutaRequest):
 
 @app.post("/reportar_bloqueo")
 async def report(p: PuntoGPS):
+    # Ahora le pasamos el ID del bloqueo al motor
     if motor.bloquear_calle(p.lat, p.lon, p.id): 
         return {"status": "ok"}
     raise HTTPException(status_code=404)
 
+# NUEVO ENDPOINT: Para eliminar bloqueos
 @app.delete("/eliminar_bloqueo/{bloqueo_id}")
 async def remove_report(bloqueo_id: int):
-    motor.desbloquear_calle(bloqueo_id)
-    return {"status": "ok"}
+    if motor.desbloquear_calle(bloqueo_id):
+        return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Bloqueo no encontrado en memoria")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)
