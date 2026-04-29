@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import MapView from './MapView'
 import './App.css'
 
+// 🛡️ URL DINÁMICA: Vital para que tu celular pueda hablar con el servidor de la PC
+const BACKEND_URL = `http://${window.location.hostname}:8001`;
+
 function App() {
   const [origen, setOrigen] = useState(null);
   const [destino, setDestino] = useState(null);
@@ -14,11 +17,34 @@ function App() {
   // Estado para saber qué tipo de incidente reportaremos
   const [tipoReporte, setTipoReporte] = useState('bloqueo');
 
+  // --- NUEVA FUNCIÓN: RADAR GPS TÁCTICO ---
+  const obtenerUbicacionGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Tu navegador o dispositivo no soporta geolocalización.");
+      return;
+    }
+
+    setCargando(true);
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        // Asigna las coordenadas del satélite directamente al Punto de Origen
+        setOrigen({ lat: posicion.coords.latitude, lon: posicion.coords.longitude });
+        setCargando(false);
+      },
+      (error) => {
+        console.error("Error de GPS:", error);
+        alert("No se pudo obtener la ubicación. Verifica que tu GPS esté encendido y tenga permisos.");
+        setCargando(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Precisión militar
+    );
+  };
+
   const calcularRuta = async () => {
     if (!origen || !destino) return;
     setCargando(true); 
     try {
-      const res = await fetch("http://127.0.0.1:8001/ruta", {
+      const res = await fetch(`${BACKEND_URL}/ruta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origen, destino }),
@@ -43,7 +69,7 @@ function App() {
     setBloqueos(prev => [...prev, nuevoBloqueo]);
 
     try {
-      await fetch("http://127.0.0.1:8001/reportar_bloqueo", {
+      await fetch(`${BACKEND_URL}/reportar_bloqueo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevoBloqueo),
@@ -57,7 +83,7 @@ function App() {
   const eliminarBloqueo = async (id) => {
     setBloqueos(prev => prev.filter(b => b.id !== id));
     try {
-      await fetch(`http://127.0.0.1:8001/eliminar_bloqueo/${id}`, { method: 'DELETE' });
+      await fetch(`${BACKEND_URL}/eliminar_bloqueo/${id}`, { method: 'DELETE' });
       if (origen && destino) calcularRuta(); 
     } catch (error) {
       console.error("Error al eliminar el bloqueo:", error);
@@ -80,7 +106,7 @@ function App() {
 
         if (caducados.length > 0) {
           caducados.forEach(b => {
-            fetch(`http://127.0.0.1:8001/eliminar_bloqueo/${b.id}`, { method: 'DELETE' })
+            fetch(`${BACKEND_URL}/eliminar_bloqueo/${b.id}`, { method: 'DELETE' })
               .catch(console.error);
           });
           if (origen && destino) calcularRuta();
@@ -114,13 +140,39 @@ function App() {
           <section className="sidebar-section">
             <p className="section-label">PUNTOS DE CONTROL</p>
             <div className="widget-grid">
+              
+              {/* --- ACTUALIZACIÓN: WIDGET DE ORIGEN CON BOTÓN GPS --- */}
               <div className={`widget-card ${origen ? 'complete' : ''}`}>
                 <span className="icon">📍</span>
-                <label>Punto Origen</label>
+                <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px' }}>
+                  <label>Punto Origen</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <small style={{ fontSize: '10px', opacity: 0.8 }}>
+                      {origen ? `${origen.lat.toFixed(4)}, ${origen.lon.toFixed(4)}` : 'Manual o Satélite'}
+                    </small>
+                    <button 
+                      onClick={obtenerUbicacionGPS} 
+                      style={{
+                        background: '#3b82f6', color: 'white', border: 'none', 
+                        padding: '4px 8px', borderRadius: '4px', fontSize: '11px', 
+                        fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '4px'
+                      }}
+                      title="Usar mi ubicación actual"
+                    >
+                      🎯 GPS
+                    </button>
+                  </div>
+                </div>
               </div>
+
               <div className={`widget-card ${destino ? 'complete' : ''}`}>
                 <span className="icon">🚩</span>
-                <label>Punto Destino</label>
+                <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px' }}>
+                  <label>Punto Destino</label>
+                  <small style={{ fontSize: '10px', opacity: 0.8 }}>
+                    {destino ? `${destino.lat.toFixed(4)}, ${destino.lon.toFixed(4)}` : 'Haz clic en el mapa'}
+                  </small>
+                </div>
               </div>
             </div>
           </section>
@@ -134,7 +186,6 @@ function App() {
               {modoReporte ? '❌ Cancelar Modo Reporte' : '🚨 Iniciar Reporte'}
             </button>
 
-            {/* Submenú de opciones de reporte */}
             {modoReporte && (
               <div className="report-type-selector">
                 <p className="micro-label">Selecciona el tipo de incidente:</p>
