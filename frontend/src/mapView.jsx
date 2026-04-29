@@ -2,6 +2,7 @@ import React from 'react';
 import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+// Agregamos onEliminarBloqueo a las props que recibe
 const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloqueos, modoReporte, onReportar, onEliminarBloqueo }) => {
 
   const handleMapClick = (e) => {
@@ -71,42 +72,27 @@ const MapView = ({ origen, destino, setOrigen, setDestino, ruta, colorRuta, bloq
         {origen && <Marker longitude={origen.lon} latitude={origen.lat} anchor="bottom"><div style={{ color: '#3b82f6', fontSize: '24px' }}>📍</div></Marker>}
         {destino && <Marker longitude={destino.lon} latitude={destino.lat} anchor="bottom"><div style={{ color: '#ef4444', fontSize: '24px' }}>🏁</div></Marker>}
         
-        {/* Renderizado dinámico según el TIPO de bloqueo */}
-        {bloqueos.map((bloqueo) => {
-          // Diccionario de iconos limpios
-          const emojis = {
-            'bloqueo': '🚫',
-            'accidente': '⚠️',
-            'obras': '🚧',
-            'evento': '🏢'
-          };
-
-          const icono = emojis[bloqueo.tipo] || '🚫';
-
-          return (
-            <Marker 
-              key={bloqueo.id} 
-              longitude={bloqueo.lon} 
-              latitude={bloqueo.lat} 
-              anchor="center"
+{/* Renderizado inteligente de bloqueos con evento de clic para borrar */}
+        {bloqueos.map((bloqueo) => (
+          <Marker 
+            key={bloqueo.id} 
+            longitude={bloqueo.lon} 
+            latitude={bloqueo.lat} 
+            anchor="center"
+            // EL SECRETO ESTÁ AQUÍ: Interceptamos el evento original del mapa
+            onClick={(e) => {
+              e.originalEvent.stopPropagation(); // Evita que el clic llegue al mapa gris
+              onEliminarBloqueo(bloqueo.id);
+            }}
+          >
+            <div 
+              style={{ cursor: 'pointer', fontSize: '28px' }} // Lo hice más grande para que sea fácil de clickear
+              title="Clic para eliminar bloqueo"
             >
-              <div 
-                style={{ 
-                  cursor: 'pointer', 
-                  fontSize: '30px',
-                  filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.5))' // Sombrita refinada
-                }} 
-                title={`Eliminar reporte de ${bloqueo.tipo || 'bloqueo'}`}
-                onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  onEliminarBloqueo(bloqueo.id);
-                }}
-              >
-                {icono}
-              </div>
-            </Marker>
-          );
-        })}
+              ⚠️
+            </div>
+          </Marker>
+        ))}
       </Map>
     </div>
   );

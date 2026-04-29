@@ -34,66 +34,6 @@ html, body, #root { width: 100%; height: 100vh; overflow: hidden; background-col
 .action-button:hover { background: rgba(239, 68, 68, 0.1); }
 .action-button.danger-mode { background: #ef4444; color: white; border-style: solid; }
 
-/* --- NUEVOS ESTILOS PARA EL SELECTOR DE REPORTES --- */
-.report-type-selector {
-  margin-top: 15px;
-  padding: 12px;
-  background: #1e293b;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  animation: fadeIn 0.3s ease-in-out;
-}
-.micro-label {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-align: center;
-}
-.type-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.type-btn {
-  background: #0f172a;
-  color: #cbd5e1;
-  border: 1px solid #334155;
-  padding: 8px 5px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-.type-btn:hover {
-  background: #334155;
-  border-color: #475569;
-}
-.type-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #60a5fa;
-  font-weight: 600;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
-}
-.help-text {
-  font-size: 11px;
-  color: #fde047;
-  margin-top: 12px;
-  text-align: center;
-  font-style: italic;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-/* --------------------------------------------------- */
-
 .route-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .route-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #cbd5e1; cursor: pointer; transition: 0.2s; text-align: left; }
 .route-item:hover { border-color: #64748b; }

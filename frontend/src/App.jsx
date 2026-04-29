@@ -9,14 +9,16 @@ function App() {
   const [seleccion, setSeleccion] = useState('mas_rapida'); 
   const [bloqueos, setBloqueos] = useState([]); 
   const [modoReporte, setModoReporte] = useState(false);
-  const [cargando, setCargando] = useState(false);
   
-  // Estado para saber qué tipo de incidente reportaremos
-  const [tipoReporte, setTipoReporte] = useState('bloqueo');
+  // NUEVO: Estado para controlar el indicador visual de carga
+  const [cargando, setCargando] = useState(false);
 
   const calcularRuta = async () => {
     if (!origen || !destino) return;
+    
+    // 1. Encendemos el indicador visual
     setCargando(true); 
+    
     try {
       const res = await fetch("http://127.0.0.1:8001/ruta", {
         method: "POST",
@@ -28,6 +30,7 @@ function App() {
     } catch (e) { 
       console.error("Error en servidor:", e); 
     } finally {
+      // 2. Apagamos el indicador pase lo que pase (éxito o error)
       setCargando(false); 
     }
   };
@@ -36,8 +39,7 @@ function App() {
     const nuevoBloqueo = {
       ...p,
       id: Date.now(),
-      timestamp: Date.now(),
-      tipo: tipoReporte // Guardamos el tipo que eligió el usuario en el submenú
+      timestamp: Date.now()
     };
 
     setBloqueos(prev => [...prev, nuevoBloqueo]);
@@ -65,10 +67,11 @@ function App() {
   };
 
   useEffect(() => {
-    const TIEMPO_VIDA_MS = 300000; // 5 minutos de vida para cada reporte
+    const TIEMPO_VIDA_MS = 300000; // 5 minutos
 
     const intervalo = setInterval(() => {
       const ahora = Date.now();
+      
       setBloqueos(prev => {
         const vigentes = [];
         const caducados = [];
@@ -79,12 +82,14 @@ function App() {
         });
 
         if (caducados.length > 0) {
+          console.log(`Eliminando ${caducados.length} bloqueos caducados...`);
           caducados.forEach(b => {
             fetch(`http://127.0.0.1:8001/eliminar_bloqueo/${b.id}`, { method: 'DELETE' })
               .catch(console.error);
           });
           if (origen && destino) calcularRuta();
         }
+        
         return vigentes; 
       });
     }, 5000); 
@@ -97,14 +102,19 @@ function App() {
       <header className="top-bar">
         <div className="logo">SMART-<span>EVACUATION-ROUTING</span></div>
         <div className="top-actions">
+          {/* NUEVO: Botón inteligente que cambia de estado y previene clics dobles */}
           <button 
             className="calc-btn" 
             onClick={calcularRuta}
             disabled={cargando}
-            style={{ opacity: cargando ? 0.7 : 1, cursor: cargando ? 'wait' : 'pointer' }}
+            style={{ 
+              opacity: cargando ? 0.7 : 1, 
+              cursor: cargando ? 'wait' : 'pointer' 
+            }}
           >
             {cargando ? '⏳ Calculando...' : 'Calcular Trayectorias'}
           </button>
+          
           <button className="reset-btn" onClick={() => window.location.reload()}>Refrescar Sistema</button>
         </div>
       </header>
@@ -131,22 +141,8 @@ function App() {
               className={`action-button ${modoReporte ? 'danger-mode' : ''}`} 
               onClick={() => setModoReporte(!modoReporte)}
             >
-              {modoReporte ? '❌ Cancelar Modo Reporte' : '🚨 Iniciar Reporte'}
+              {modoReporte ? '❌ Terminar Reporte' : '🚫 Reportar Bloqueo'}
             </button>
-
-            {/* Submenú de opciones de reporte */}
-            {modoReporte && (
-              <div className="report-type-selector">
-                <p className="micro-label">Selecciona el tipo de incidente:</p>
-                <div className="type-grid">
-                  <button className={`type-btn ${tipoReporte === 'bloqueo' ? 'active' : ''}`} onClick={() => setTipoReporte('bloqueo')}>🚫 Cierre</button>
-                  <button className={`type-btn ${tipoReporte === 'accidente' ? 'active' : ''}`} onClick={() => setTipoReporte('accidente')}>⚠️ Choque</button>
-                  <button className={`type-btn ${tipoReporte === 'obras' ? 'active' : ''}`} onClick={() => setTipoReporte('obras')}>🚧 Obras</button>
-                  <button className={`type-btn ${tipoReporte === 'evento' ? 'active' : ''}`} onClick={() => setTipoReporte('evento')}>🏢 Evento</button>
-                </div>
-                <p className="help-text">👉 Haz clic en el mapa para fijar el reporte</p>
-              </div>
-            )}
           </section>
 
           {rutas && (
